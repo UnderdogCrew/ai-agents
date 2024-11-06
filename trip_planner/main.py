@@ -9,16 +9,13 @@ from config import Settings, get_settings
 # Load environment variables
 load_dotenv()
 
-# Initialize FastAPI app with config
-def create_app(settings: Settings = Depends(get_settings)):
-    app = FastAPI(
-        title=settings.API_TITLE,
-        version=settings.API_VERSION,
-        debug=settings.DEBUG_MODE
-    )
-    return app
-
-app = create_app()
+# Initialize FastAPI app
+settings = get_settings()
+app = FastAPI(
+    title=settings.API_TITLE,
+    version=settings.API_VERSION,
+    debug=settings.DEBUG_MODE
+)
 
 # Define request model
 class TripRequest(BaseModel):
@@ -96,6 +93,13 @@ async def generate_trip_plan(trip_request: TripRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/settings")
+async def get_api_settings(settings: Settings = Depends(get_settings)):
+    return {
+        "title": settings.API_TITLE,
+        "version": settings.API_VERSION
+    }
 
 if __name__ == "__main__":
     import uvicorn
