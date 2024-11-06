@@ -1,15 +1,24 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from crewai import Crew
 from trip_agents import TripAgents
 from trip_tasks import TripTasks
 from dotenv import load_dotenv
+from config import Settings, get_settings
 
 # Load environment variables
 load_dotenv()
 
-# Initialize FastAPI app
-app = FastAPI(title="Trip Planner API")
+# Initialize FastAPI app with config
+def create_app(settings: Settings = Depends(get_settings)):
+    app = FastAPI(
+        title=settings.API_TITLE,
+        version=settings.API_VERSION,
+        debug=settings.DEBUG_MODE
+    )
+    return app
+
+app = create_app()
 
 # Define request model
 class TripRequest(BaseModel):
@@ -90,4 +99,10 @@ async def generate_trip_plan(trip_request: TripRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    settings = get_settings()
+    uvicorn.run(
+        "main:app", 
+        host=settings.API_HOST, 
+        port=settings.API_PORT,
+        reload=settings.DEBUG_MODE
+    )
