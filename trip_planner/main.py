@@ -1,12 +1,22 @@
-import streamlit as st
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from crewai import Crew
-from textwrap import dedent
 from trip_agents import TripAgents
 from trip_tasks import TripTasks
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Initialize FastAPI app
+app = FastAPI(title="Trip Planner API")
+
+# Define request model
+class TripRequest(BaseModel):
+    origin: str
+    cities: list[str]
+    date_range: str
+    interests: str
 
 class TripCrew:
     def __init__(self, origin, cities, date_range, interests):
@@ -54,28 +64,30 @@ class TripCrew:
         result = crew.kickoff()
         return result
 
-# Streamlit UI
-st.title("Trip Planner Crew")
+# API endpoints
+@app.get("/")
+async def root():
+    return {"message": "Welcome to Trip Planner API"}
 
-st.write("## Welcome to Trip Planner Crew")
-st.write("Please provide the following details to plan your trip:")
+@app.post("/generate-trip-plan")
+async def generate_trip_plan(trip_request: TripRequest):
+    try:
+        if not all([trip_request.origin, trip_request.cities, trip_request.date_range, trip_request.interests]):
+            raise HTTPException(status_code=400, detail="All fields are required")
+        
+        trip_crew = TripCrew(
+            trip_request.origin,
+            trip_request.cities,
+            trip_request.date_range,
+            trip_request.interests
+        )
+        
+        result = trip_crew.run()
+        return {"trip_plan": result}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# User inputs
-location = st.text_input("From where will you be traveling?")
-cities = st.text_input("What cities are you interested in visiting? (comma-separated)")
-date_range = st.text_input("What is your preferred date range for the trip?")
-interests = st.text_area("What are some of your interests and hobbies?")
-
-# Run trip planner
-if st.button("Generate Trip Plan"):
-    if location and cities and date_range and interests:
-        trip_crew = TripCrew(location, cities.split(','), date_range, interests)
-
-        # Display a spinner while the trip plan is being generated
-        with st.spinner("Generating your trip plan..."):
-            result = trip_crew.run()
-
-        st.write("## Here is your Trip Plan")
-        st.write(result)
-    else:
-        st.warning("Please fill out all fields to generate a trip plan.")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
