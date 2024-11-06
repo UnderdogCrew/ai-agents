@@ -7,7 +7,7 @@ from tools.search_tools import SearchTools
 
 import os
 
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 os.environ['SERPER_API_KEY'] = "5e0b1d78ec1cfd2927171148591bcc5e3efe33b5"
 os.environ['SEC_API_API_KEY'] = "1dc5c9bca79c315c191547b378aae847500c4685579f7bdbe71647fbfd11253f"
 os.environ['BROWSERLESS_API_KEY'] = "QHHtkmyd7LoUPif3abd9c596e7fec944658c9a0e8e"
