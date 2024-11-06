@@ -2,7 +2,7 @@ module.exports = {
     apps : [
         {
               name: 'trip-planner',
-              script: 'main.py',
+              script: 'uvicorn main:app --host 0.0.0.0',
               args: '',
               instances: 1,
               autorestart: true,
