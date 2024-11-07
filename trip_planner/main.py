@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from crewai import Crew
 from trip_agents import TripAgents
@@ -15,6 +16,15 @@ app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
     debug=settings.DEBUG_MODE
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Define request model
