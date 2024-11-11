@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from crewai import Crew
-from trip_agents import TripAgents
-from trip_tasks import TripTasks
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.output_parser import StrOutputParser
 from dotenv import load_dotenv
 from config import Settings, get_settings
 
@@ -37,51 +37,65 @@ class TripRequest(BaseModel):
     date_range: str
     interests: str
 
-class TripCrew:
+class TripPlanner:
     def __init__(self, origin, cities, date_range, interests):
         self.cities = cities
         self.origin = origin
         self.interests = interests
         self.date_range = date_range
+        self.llm = ChatOpenAI(
+            temperature=0.7,
+            model="gpt-4o-mini"
+        )
 
     def run(self):
-        agents = TripAgents()
-        tasks = TripTasks()
+        try:
+            # Create prompt template
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", """Expand this guide into a full 7-day travel 
+                itinerary with detailed per-day plans, including 
+                weather forecasts, places to eat, packing suggestions, 
+                and a budget breakdown.
+                
+                You MUST suggest actual places to visit, actual hotels 
+                to stay and actual restaurants to go to.
+                
+                This itinerary should cover all aspects of the trip, 
+                from arrival to departure, integrating the city guide
+                information with practical travel logistics.
+                
+                Your final answer MUST be a complete expanded travel plan,
+                formatted as markdown, encompassing a daily schedule,
+                anticipated weather conditions, recommended clothing and
+                items to pack, and a detailed budget, ensuring THE BEST
+                TRIP EVER. Be specific and give it a reason why you picked
+                each place, what makes them special! If you do your BEST WORK, I'll tip you $100!"""),
+                ("user", """Please create a travel plan with the following details:
+                Starting from: {origin}
+                Cities to visit: {cities}
+                Date range: {date_range}
+                Interests and preferences: {interests}
+                
+                Complete expanded travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown
+                """)
+            ])
 
-        city_selector_agent = agents.city_selection_agent()
-        local_expert_agent = agents.local_expert()
-        travel_concierge_agent = agents.travel_concierge()
+            # Create the chain
+            chain = prompt | self.llm | StrOutputParser()
 
-        # identify_task = tasks.identify_task(
-        #     city_selector_agent,
-        #     self.origin,
-        #     self.cities,
-        #     self.interests,
-        #     self.date_range
-        # )
-        # gather_task = tasks.gather_task(
-        #     local_expert_agent,
-        #     self.origin,
-        #     self.interests,
-        #     self.date_range
-        # )
-        plan_task = tasks.plan_task(
-            travel_concierge_agent, 
-            self.origin,
-            self.interests,
-            self.date_range
-        )
+            # Execute the chain
+            result = chain.invoke({
+                "origin": self.origin,
+                "cities": ", ".join(self.cities),
+                "date_range": self.date_range,
+                "interests": self.interests
+            })
 
-        crew = Crew(
-            agents=[
-                travel_concierge_agent #city_selector_agent, local_expert_agent,
-            ],
-            tasks=[plan_task], #identify_task, gather_task, ],
-            verbose=True
-        )
+            return result
 
-        result = crew.kickoff()
-        return result
+        except Exception as e:
+            print(f"Error in TripPlanner: {str(e)}")
+            return f"Error generating trip plan: {str(e)}"
 
 # API endpoints
 @app.get("/")
@@ -94,14 +108,14 @@ async def generate_trip_plan(trip_request: TripRequest):
         if not all([trip_request.origin, trip_request.cities, trip_request.date_range, trip_request.interests]):
             raise HTTPException(status_code=400, detail="All fields are required")
         
-        trip_crew = TripCrew(
+        trip_planner = TripPlanner(
             trip_request.origin,
             trip_request.cities,
             trip_request.date_range,
             trip_request.interests
         )
         
-        result = trip_crew.run()
+        result = trip_planner.run()
         return {"trip_plan": result}
     
     except Exception as e:
