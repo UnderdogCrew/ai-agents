@@ -30,12 +30,14 @@ app.add_middleware(
     max_age=600,
 )
 
+
 # Define request model
 class TripRequest(BaseModel):
     origin: str
     cities: list[str]
     date_range: str
     interests: str
+
 
 class TripPlanner:
     def __init__(self, origin, cities, date_range, interests):
@@ -56,14 +58,14 @@ class TripPlanner:
                 itinerary with detailed per-day plans, including 
                 weather forecasts, places to eat, packing suggestions, 
                 and a budget breakdown.
-                
+
                 You MUST suggest actual places to visit, actual hotels 
                 to stay and actual restaurants to go to.
-                
+
                 This itinerary should cover all aspects of the trip, 
                 from arrival to departure, integrating the city guide
                 information with practical travel logistics.
-                
+
                 Your final answer MUST be a complete expanded travel plan,
                 formatted as markdown, encompassing a daily schedule,
                 anticipated weather conditions, recommended clothing and
@@ -75,7 +77,7 @@ class TripPlanner:
                 Cities to visit: {cities}
                 Date range: {date_range}
                 Interests and preferences: {interests}
-                
+
                 Complete expanded travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown
                 """)
             ])
@@ -97,29 +99,32 @@ class TripPlanner:
             print(f"Error in TripPlanner: {str(e)}")
             return f"Error generating trip plan: {str(e)}"
 
+
 # API endpoints
 @app.get("/")
 async def root():
     return {"message": "Welcome to Trip Planner API"}
+
 
 @app.post("/generate-trip-plan")
 async def generate_trip_plan(trip_request: TripRequest):
     try:
         if not all([trip_request.origin, trip_request.cities, trip_request.date_range, trip_request.interests]):
             raise HTTPException(status_code=400, detail="All fields are required")
-        
+
         trip_planner = TripPlanner(
             trip_request.origin,
             trip_request.cities,
             trip_request.date_range,
             trip_request.interests
         )
-        
+
         result = trip_planner.run()
         return {"trip_plan": result}
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/settings")
 async def get_api_settings(settings: Settings = Depends(get_settings)):
@@ -128,12 +133,14 @@ async def get_api_settings(settings: Settings = Depends(get_settings)):
         "version": settings.API_VERSION
     }
 
+
 if __name__ == "__main__":
     import uvicorn
+
     settings = get_settings()
     uvicorn.run(
-        "main:app", 
-        host=settings.API_HOST, 
+        "main:app",
+        host=settings.API_HOST,
         port=settings.API_PORT,
         reload=settings.DEBUG_MODE
     )
